@@ -1,0 +1,17 @@
+[package]
+name = "mock-llm"
+version = "0.1.0"
+edition = "2024"
+description = "High-concurrency OpenAI-compatible HTTP/1.1 & h2c SSE mock server for AI gateway benchmarking"
+license = "MIT"
+repository = "https://github.com/EeroEternal/mock-llm"
+
+[dependencies]
+tokio = { version = "1.43", features = ["rt-multi-thread", "net", "macros", "time", "io-util"] }
+hyper = { version = "1", features = ["http1", "http2", "server"] }
+hyper-util = { version = "0.1", features = ["tokio", "server", "server-auto", "http1", "http2"] }
+http = "1"
+http-body-util = "0.1"
+bytes = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
