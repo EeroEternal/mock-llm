@@ -1,6 +1,6 @@
 # mock-llm
 
-**mock-llm** is a high-concurrency, zero-allocation OpenAI-compatible mock upstream server written in Rust. Designed for stress-testing AI gateways ([xlite](https://github.com/EeroEternal/xlite), [LiteLLM](https://github.com/BerriAI/litellm), [New API](https://github.com/QuantumNous/new-api), [AISIX](https://github.com/api7/aisix)) and streaming load balancers ([xLB](https://github.com/EeroEternal/xlb)), it serves both **HTTP/1.1** and **cleartext HTTP/2 (`h2c`)** on a single port while keeping per-chunk CPU cost near zero.
+**mock-llm** is a high-concurrency, zero-allocation OpenAI-compatible mock upstream server written in Rust. Purpose-built for stress-testing AI gateways and streaming load balancers at 10,000+ concurrent streams, it serves both **HTTP/1.1** and **cleartext HTTP/2 (`h2c`)** on a single port with deterministic TTFT pacing, token intervals, live `/_config` hot-reloading, and fault injection—while keeping mock server CPU overhead near zero.
 
 <p align="center">
   <img src="docs/assets/architecture.svg" alt="mock-llm Architecture" width="100%">
@@ -8,78 +8,52 @@
 
 ## Why mock-llm
 
-When benchmarking an AI gateway at 10,000–20,000 concurrent SSE streams (millions of chunks per second), naive mock servers become the CPU bottleneck before the gateway under test does.
+When benchmarking an AI gateway at 10,000–20,000 concurrent SSE streams (millions of chunks per second), conventional Python/Node/Go mock servers spend more CPU serializing JSON and allocating timers than the gateway under test.
 
-- **Zero-Allocation SSE Frame Assembly** — Pre-renders `chat.completion.chunk` frames from constant byte slices and patches only the 13-digit millisecond timestamp (`ts`) in place into a reusable `BytesMut` buffer, paired with `tokio::time::Sleep::reset` timer reuse.
-- **Dual-Stack HTTP/1.1 & `h2c` on One Port** — Automatically serves HTTP/1.1 keep-alive and HTTP/2 prior-knowledge (`h2c`) connections on the same listener, advertising `SETTINGS_MAX_CONCURRENT_STREAMS = 250` for realistic HTTP/2 pool benchmarking.
-- **Live Runtime Reconfiguration (`POST /_config`)** — Switch between workload profiles (TTFT delay, token interval, output token count, write batching, or randomized short/mid/long token mixes) between benchmark stages without restarting processes.
-- **Per-Request Latency & Fault Injection Headers** — Override `ttft`, `output`, `duration`, or inject deterministic HTTP `429 Too Many Requests` / `500 Internal Server Error` responses via `x-mock-*` request headers to test gateway failover and circuit breaking.
+- **Zero-Allocation SSE Frame Engine** — Pre-renders `chat.completion.chunk` frames from constant byte slices and patches only the 13-digit millisecond timestamp (`ts`) in place into a reusable `BytesMut` buffer, paired with `tokio::time::Sleep::reset` timer reuse (~`65k req/s` at `0.14` CPU cores).
+- **Single-Port HTTP/1.1 & `h2c` Dual-Stack** — Automatically serves HTTP/1.1 keep-alive and HTTP/2 prior-knowledge (`h2c`) connections on the same listener, advertising `SETTINGS_MAX_CONCURRENT_STREAMS = 250` for realistic HTTP/2 connection pool benchmarking.
+- **Live Workload Reconfiguration (`POST /_config`)** — Mutate TTFT delay, token interval, output token count, socket write batching, or randomized `long / mid / short` token distributions between benchmark stages without restarting processes.
+- **Deterministic Per-Request Fault & Latency Injection** — Override `ttft`, `output`, `duration`, or inject HTTP `429 Too Many Requests` / `500 Internal Server Error` responses via `x-mock-*` request headers to verify gateway failover and circuit breaking.
+
+| Dimension | **mock-llm (Rust)** | **Python / FastAPI Mock** | **Node.js / Go Naive Mock** |
+| :--- | :--- | :--- | :--- |
+| **SSE Chunk Assembly** | **In-place byte slice + `ts` patch (0 JSON serialization)** | Per-chunk `json.dumps()` + dict allocation | Per-chunk `JSON.stringify` / `json.Marshal` |
+| **Timer Scheduling** | **Single pinned `Sleep::reset` per stream** | New asyncio task / timer per chunk | New `setTimeout` / `time.After` per chunk |
+| **Transport Support** | **Single-port auto HTTP/1.1 + `h2c` (`250` streams/conn)** | HTTP/1.1 (or separate h2 flags) | Separate ports or manual h2c wiring |
+| **Runtime Control** | **Live `POST /_config` + per-request `x-mock-*` headers** | Process restart required | Custom code required |
 
 ## Quick Start
 
+**Option 1 — Docker:**
+
 ```bash
-cargo build --release
-PORT=8081 MOCK_TTFT=500 MOCK_OUT_TOKENS=100 ./target/release/mock-llm
+docker run -d --name mock-llm -p 8081:8081 \
+  -e MOCK_TTFT=500 -e MOCK_OUT_TOKENS=100 -e MOCK_TOKEN_INTERVAL=20 \
+  ghcr.io/eeroeternal/mock-llm:latest
 ```
 
-Stream an OpenAI-compatible SSE response:
+**Option 2 — Pre-built Binary (or `cargo run --release`):**
 
 ```bash
+PORT=8081 MOCK_TTFT=500 MOCK_OUT_TOKENS=100 ./mock-llm
+```
+
+Send a streaming request, hot-update the workload profile via `POST /_config`, or inject a `429` error via `x-mock-*` headers (full parameter & header tables in [`docs/configuration.md`](docs/configuration.md)):
+
+```bash
+# 1. Stream OpenAI SSE chunks
 curl -N http://127.0.0.1:8081/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{"model":"mock","stream":true,"messages":[{"role":"user","content":"hi"}]}'
+
+# 2. Hot-update TTFT, output tokens, and interval at runtime without restart
+curl -X POST "http://127.0.0.1:8081/_config?ttft=200&out_tokens=250&token_interval=10"
+
+# 3. Inject HTTP 429 rate-limit error to test gateway failover
+curl -i http://127.0.0.1:8081/v1/chat/completions -H "x-mock-error: rate_limit" -d '{"model":"mock"}'
 ```
 
-Update workload parameters at runtime (or read current config with `POST /_config` and no query string):
+## Documentation
 
-```bash
-curl -X POST "http://127.0.0.1:8081/_config?ttft=500&out_tokens=250&token_interval=20&batch=1"
-```
-
-Inject per-request overrides or upstream errors (`429` / `500`) to verify gateway failover:
-
-```bash
-curl -i http://127.0.0.1:8081/v1/chat/completions \
-  -H "x-mock-error: rate_limit" \
-  -d '{"model":"mock","stream":true}'
-```
-
-## Configuration & HTTP Contract
-
-### Environment Variables & `/_config` Query Keys
-
-| Env Variable | `/_config` Key | Default | Description |
-| :--- | :--- | :--- | :--- |
-| `PORT` | *(env only)* | `8081` | TCP listen port on `0.0.0.0` |
-| `MOCK_TTFT` | `ttft` | `500` | Pre-first-token delay in ms |
-| `MOCK_OUT_TOKENS` | `out_tokens` | `50` | Number of content SSE frames emitted per stream |
-| `MOCK_TOKEN_INTERVAL` | `token_interval` | `0` | Inter-frame interval in ms (`0` falls back to `MOCK_STREAM_DEFAULT_INTERVAL`) |
-| `MOCK_STREAM_DEFAULT_INTERVAL` | *(env only)* | `20` | Fallback interval in ms when `token_interval = 0` |
-| `MOCK_BATCH` | `batch` | `1` | Coalesce every `N` content frames into a single socket write (byte-identical payload) |
-| `MOCK_TOTAL_DELAY` | `total_delay` | `0` | Additional delay in ms for non-streaming responses (`ttft + total_delay`) |
-| `MOCK_RESPONSE_SIZE` | `response_size` | `0` | Total content byte budget (`0` = 4 bytes per frame) |
-| `MOCK_MAX_DURATION` | `max_duration` | `0` | Max streaming duration in ms before frame truncation (`0` = unlimited) |
-| `MOCK_MIX` | `mix` | `0` | When `1`, sample `out_tokens` across `long` / `mid` / `short` tiers by percentage |
-| `MOCK_LONG_PCT` / `MID_PCT` / `SHORT_PCT` | `long_pct` / `mid_pct` / `short_pct` | `20` / `30` / `50` | Percentage weights when `mix = 1` |
-| `MOCK_LONG_OUT` / `MID_OUT` / `SHORT_OUT` | `long_out` / `mid_out` / `short_out` | `500` / `250` / `100` | Output token counts for each tier when `mix = 1` |
-
-### Per-Request Override Headers
-
-| Header | Example | Effect |
-| :--- | :--- | :--- |
-| `x-mock-ttft` | `x-mock-ttft: 100` | Override `ttft` (ms) for this request |
-| `x-mock-delay` | `x-mock-delay: 50` | Override `total_delay` (ms) for this request |
-| `x-mock-output` | `x-mock-output: 500` | Override `out_tokens` for this request |
-| `x-mock-size` | `x-mock-size: 4096` | Override `response_size` (bytes) for this request |
-| `x-mock-duration` | `x-mock-duration: 2000` | Override `max_duration` (ms) for this request |
-| `x-mock-error` | `rate_limit` or `500` | Return HTTP `429 Too Many Requests` or `500 Internal Server Error` immediately |
-
-## Verification
-
-```bash
-cargo test
-```
-
-## License
-
-Released under the [MIT License](LICENSE).
+- [Configuration & HTTP Contract](docs/configuration.md) — environment variables, live `POST /_config` query keys, `x-mock-*` request headers, and SSE wire format
+- [License](LICENSE) — MIT
