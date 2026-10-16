@@ -24,21 +24,21 @@
   <g font-size="11" font-weight="600" fill="#64748B" letter-spacing="0.06em" text-anchor="middle">
     <text x="92" y="28">GATEWAYS &amp; LOAD RIGS</text>
     <text x="415" y="28" fill="#1D4ED8">MOCK-LLM UPSTREAM ENGINE</text>
-    <text x="795" y="28">SIMULATED LLM RESPONSES</text>
+    <text x="806" y="28">SIMULATED LLM RESPONSES</text>
   </g>
 
   <!-- ==================== 1. GATEWAYS & LOAD RIGS ==================== -->
   <g filter="url(#shadow)">
     <rect x="24" y="56" width="136" height="46" rx="6" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.5"/>
     <text x="92" y="75" text-anchor="middle" font-size="12.5" font-weight="700" fill="#1E293B">xlite / xLB</text>
-    <text x="92" y="91" text-anchor="middle" font-size="10" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#64748B">h2c / HTTP/1.1 pool</text>
+    <text x="92" y="91" text-anchor="middle" font-size="10" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#64748B">h2c / HTTP/1.1</text>
 
     <rect x="24" y="135" width="136" height="46" rx="6" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.5"/>
     <text x="92" y="154" text-anchor="middle" font-size="12.5" font-weight="700" fill="#1E293B">LiteLLM / New API</text>
     <text x="92" y="170" text-anchor="middle" font-size="10" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#64748B">POST /v1/chat</text>
 
     <rect x="24" y="214" width="136" height="46" rx="6" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.5"/>
-    <text x="92" y="233" text-anchor="middle" font-size="12.5" font-weight="700" fill="#1E293B">k6 / Bench Harness</text>
+    <text x="92" y="233" text-anchor="middle" font-size="12.5" font-weight="700" fill="#1E293B">k6 / Bench Rig</text>
     <text x="92" y="249" text-anchor="middle" font-size="10" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#64748B">POST /_config</text>
   </g>
 
@@ -58,25 +58,25 @@
 
   <!-- mock-llm Header -->
   <text x="415" y="69" text-anchor="middle" font-size="16" font-weight="700" fill="#1E3A8A">mock-llm</text>
-  <rect x="275" y="78" width="280" height="20" rx="10" fill="#DBEAFE" stroke="#93C5FD" stroke-width="1"/>
-  <text x="415" y="92" text-anchor="middle" font-size="11" font-weight="600" fill="#1D4ED8">Zero-alloc SSE frames · Dual HTTP/1.1 &amp; h2c</text>
+  <rect x="285" y="78" width="260" height="20" rx="10" fill="#DBEAFE" stroke="#93C5FD" stroke-width="1"/>
+  <text x="415" y="92" text-anchor="middle" font-size="11" font-weight="600" fill="#1D4ED8">Zero-alloc SSE · Dual HTTP/1.1 &amp; h2c</text>
 
   <!-- mock-llm Internal Sub-blocks -->
   <g text-anchor="middle">
     <!-- Block A: Dual-Stack Auto Listener -->
     <rect x="262" y="108" width="306" height="44" rx="6" fill="#FFFFFF" stroke="#BFDBFE" stroke-width="1.2"/>
     <text x="415" y="126" font-size="12" font-weight="600" fill="#1E293B">Single-Port HTTP/1.1 &amp; h2c Server</text>
-    <text x="415" y="142" font-size="10.5" fill="#475569">Prior-knowledge h2c · SETTINGS_MAX_CONCURRENT_STREAMS=250</text>
+    <text x="415" y="142" font-size="10.5" fill="#475569">Prior-knowledge h2c · 250 max streams/conn</text>
 
     <!-- Block B: Pre-Rendered Frame Assembler -->
     <rect x="262" y="160" width="306" height="44" rx="6" fill="#FFFFFF" stroke="#BFDBFE" stroke-width="1.2"/>
     <text x="415" y="178" font-size="12" font-weight="600" fill="#1E293B">Zero-Allocation SSE Frame Engine</text>
-    <text x="415" y="194" font-size="10.5" fill="#475569">Constant byte slices · In-place 13-digit ts · Sleep::reset</text>
+    <text x="415" y="194" font-size="10.5" fill="#475569">Constant slices · In-place ts · Sleep::reset</text>
 
     <!-- Block C: Live Tuning & Chaos Control -->
     <rect x="262" y="212" width="306" height="46" rx="6" fill="#FFFFFF" stroke="#60A5FA" stroke-width="1.5"/>
     <text x="415" y="230" font-size="12" font-weight="700" fill="#1D4ED8">Hot Config &amp; Per-Request Overrides</text>
-    <text x="415" y="246" font-size="10.5" fill="#475569">POST /_config (15 knobs) · x-mock-ttft / output / error</text>
+    <text x="415" y="246" font-size="10.5" fill="#475569">POST /_config · x-mock-ttft / output / error</text>
   </g>
 
   <!-- mock-llm -> Simulated Outputs Arrows -->
@@ -93,20 +93,20 @@
     <!-- SSE Stream -->
     <rect x="660" y="52" width="292" height="56" rx="7" fill="#F0FDF4" stroke="#86EFAC" stroke-width="1.5"/>
     <circle cx="678" cy="71" r="4" fill="#10B981"/>
-    <text x="690" y="75" font-size="12.5" font-weight="700" fill="#065F46">Paced SSE Token Stream (stream: true)</text>
-    <text x="674" y="94" font-size="10" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#047857">TTFT delay · interval pacing · batch coalescing · [DONE]</text>
+    <text x="690" y="75" font-size="12.5" font-weight="700" fill="#065F46">Paced SSE Stream (stream: true)</text>
+    <text x="674" y="94" font-size="10.5" fill="#047857">TTFT delay · Token interval · Batching · [DONE]</text>
 
     <!-- Non-stream JSON -->
     <rect x="660" y="130" width="292" height="56" rx="7" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.5"/>
     <circle cx="678" cy="149" r="4" fill="#2563EB"/>
-    <text x="690" y="153" font-size="12.5" font-weight="700" fill="#0F172A">One-Shot Completion (stream: false)</text>
-    <text x="674" y="172" font-size="10" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#475569">ttft + total_delay · ~65k req/s @ 0.14 CPU cores</text>
+    <text x="690" y="153" font-size="12.5" font-weight="700" fill="#0F172A">One-Shot JSON (stream: false)</text>
+    <text x="674" y="172" font-size="10.5" fill="#475569">Configurable delay · ~65k req/s @ 0.14 cores</text>
 
     <!-- Error Injection -->
     <rect x="660" y="208" width="292" height="56" rx="7" fill="#FFFBEB" stroke="#FCD34D" stroke-width="1.5"/>
     <circle cx="678" cy="227" r="4" fill="#F59E0B"/>
     <text x="690" y="231" font-size="12.5" font-weight="700" fill="#92400E">Deterministic Fault Injection</text>
-    <text x="674" y="250" font-size="10" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#B45309">x-mock-error: rate_limit (429) | 500 (500)</text>
+    <text x="674" y="250" font-size="10.5" fill="#B45309">x-mock-error: rate_limit (429) or 500</text>
   </g>
 
   <!-- Bottom Boundary Annotation Bar -->
@@ -114,11 +114,11 @@
     <line x1="244" y1="294" x2="586" y2="294" stroke="#2563EB" stroke-width="2"/>
     <circle cx="244" cy="294" r="3" fill="#2563EB"/>
     <circle cx="586" cy="294" r="3" fill="#2563EB"/>
-    <text x="415" y="312" text-anchor="middle" font-size="11" font-weight="600" fill="#1E40AF">Control: Env Vars · Live POST /_config · Per-Request Headers</text>
+    <text x="415" y="312" text-anchor="middle" font-size="11" font-weight="600" fill="#1E40AF">Control: Env Vars · Live POST /_config · Request Headers</text>
 
     <line x1="660" y1="294" x2="952" y2="294" stroke="#64748B" stroke-width="1.5"/>
     <circle cx="660" cy="294" r="3" fill="#64748B"/>
     <circle cx="952" cy="294" r="3" fill="#64748B"/>
-    <text x="806" y="312" text-anchor="middle" font-size="11" font-weight="600" fill="#475569">Wire Contract: OpenAI /v1/chat/completions + Per-Chunk ms Timestamp</text>
+    <text x="806" y="312" text-anchor="middle" font-size="11" font-weight="600" fill="#475569">Wire Contract: OpenAI /v1/chat/completions + Chunk Timestamp</text>
   </g>
 </svg>
